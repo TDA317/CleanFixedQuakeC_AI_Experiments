@@ -51,12 +51,13 @@ float() crandom =
 W_FireAxe
 ================
 */
+// TDA-Jules: Optimized: This function relies on its caller (e.g., W_Attack)
+// to have recently called makevectors(self.v_angle) to set v_forward.
 void() W_FireAxe =
 {
 	local vector source;
 	local vector org;
 
-	makevectors (self.v_angle);
 	source = self.origin + '0 0 16';
 	traceline (source, source + v_forward*64, FALSE, self);
 	if (trace_fraction == 1.0)
@@ -249,12 +250,12 @@ Used by shotgun, super shotgun, and enemy soldier firing
 Go to the trouble of combining multiple pellets into a single damage call.
 ================
 */
+// TDA-Jules: Optimized: This function relies on its caller's context (e.g., via W_Attack)
+// to have recently called makevectors(self.v_angle) to set v_forward, v_right, and v_up.
 void(float shotcount, vector dir, vector spread) FireBullets =
 {
 	local vector direction;
 	local vector src;
-
-	makevectors(self.v_angle);
 
 	src = self.origin + v_forward*10;
 	src_z = self.absmin_z + self.size_z * 0.7;
@@ -388,6 +389,9 @@ void() T_MissileTouch =
 W_FireRocket
 ================
 */
+// TDA-Jules: Optimized: This function relies on its caller (e.g., W_Attack)
+// to have recently called makevectors(self.v_angle) to set v_forward
+// used in setorigin for the missile. aim() will use current self.v_angle.
 void() W_FireRocket =
 {
 	local entity missile;
@@ -405,7 +409,6 @@ void() W_FireRocket =
 	missile.classname = "missile";
 
 	// set missile speed
-	makevectors (self.v_angle);
 	missile.velocity = aim(self, 1000);
 	missile.velocity = missile.velocity * 1000;
 	missile.angles = vectoangles(missile.velocity);
@@ -439,6 +442,21 @@ void(vector p1, vector p2, entity from, float damage) LightningDamage =
 	local entity e1, e2;
 	local vector f;
 
+	// TDA-Jules: The following lines calculate the offset vector 'f' for the side lightning beams.
+	// Let the normalized direction vector of the main trace (p2 - p1) be (fx_orig, fy_orig, fz_orig).
+	// The code effectively sets:
+	//   f_x_new = -fy_orig
+	//   f_y_new = -fy_orig (since f_y is assigned the new f_x)
+	//   f_z_new = 0
+	// So, the offset direction (before scaling by 16) is (-fy_orig, -fy_orig, 0).
+	// This means:
+	// 1. The spread of the side beams is proportional to the absolute magnitude of the Y-component (fy_orig)
+	//    of the initial normalized direction vector.
+	// 2. If fy_orig is 0 (i.e., the player is aiming perfectly along the X-axis, or straight up/down along the Z-axis),
+	//    the offset vector (and thus the spread) will be (0,0,0). All three lightning beams will be collinear.
+	// 3. The offset direction is always along the diagonal lines y=x or y=-x in the XY plane of the offset space,
+	//    scaled by -fy_orig. It doesn't consistently rotate to be 'to the side' of the player's view in all XY plane aiming directions.
+	// This is likely a specific Quake behavior and is not being changed to preserve gameplay.
 	f = p2 - p1;
 	normalize (f);
 	f_x = 0 - f_y;
@@ -564,6 +582,9 @@ void() GrenadeTouch =
 W_FireGrenade
 ================
 */
+// TDA-Jules: Optimized: This function relies on its caller (e.g., W_Attack)
+// to have recently called makevectors(self.v_angle) to set v_forward, v_up, and v_right
+// used for the missile's initial velocity calculation if not using aim().
 void() W_FireGrenade =
 {
 	local entity missile;
@@ -581,8 +602,6 @@ void() W_FireGrenade =
 	missile.classname = "grenade";
 
 	// set missile speed
-	makevectors (self.v_angle);
-
 	if (self.v_angle_x)
 		missile.velocity = v_forward*600 + v_up * 200 + crandom()*v_right*10 + crandom()*v_up*10;
 	else
@@ -656,11 +675,12 @@ void() W_FireSuperSpikes =
 	self.punchangle_x = -2;
 };
 
+// TDA-Jules: Optimized: This function relies on its caller (e.g., W_Attack)
+// to have recently called makevectors(self.v_angle) to set v_right
+// used in launch_spike for the missile's origin offset. aim() will use current self.v_angle.
 void(float ox) W_FireSpikes =
 {
 	local vector dir;
-
-	makevectors (self.v_angle);
 
 	if (self.ammo_nails >= 2 && self.weapon == IT_SUPER_NAILGUN)
 	{
@@ -1303,5 +1323,3 @@ void() SuperDamageSound =
 	}
 	return;
 };
-
-
