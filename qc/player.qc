@@ -151,6 +151,13 @@ void()	player_run =[	$rockrun1,	player_run	]
 	{
 		if (self.walkframe == 6)
 			self.walkframe = 0;
+// TDA-Jules: This line correctly updates the animation frame.
+// When player_run is the entity's think function (e.g., from 'void() player_run = [$rockrun1, player_run]'),
+// self.frame is implicitly set to $rockrun1 (the base frame of the cycle) by the engine
+// before this function's code block is executed.
+// Thus, 'self.frame + self.walkframe' effectively means '$rockrun1 + self.walkframe',
+// which correctly cycles through the $rockrun1 to $rockrun6 animation frames.
+// self.walkframe cycles from 0 to 5.
 		self.frame = self.frame + self.walkframe;
 	}
 	self.walkframe = self.walkframe + 1;
