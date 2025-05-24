@@ -1,8 +1,15 @@
+# This is an experimental AI modified version of:
 # Clean Fixed QuakeC
-
 Clean and bug-fixed version of the Quake game code (progs.dat) released under the GPL.
 
 ## About
+
+Note from TDA:
+I am using Jules from Google (and likely other tools including ChatGPT, Gemini, Qwen, etc) to edit the QC code.
+This is currently all experimental for fun as time allows during my otherwise busy life. Don't expect anything too crazy.
+Will do my best to be fully GPL compliant and have the AI comment heavily.
+
+Now for the rest of the original document:
 
 The computer game Quake was released in 1996.
 
