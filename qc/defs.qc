@@ -467,6 +467,9 @@ float		skill;
 
 .float	search_time;
 .float	attack_state;
+// TDA-Jules: For strafing AI
+.float strafe_finished_time; // Cooldown for strafing
+.float is_strafing;          // Flag to indicate currently strafing
 
 float	AS_STRAIGHT		= 1;
 float	AS_SLIDING		= 2;
@@ -708,5 +711,3 @@ void(entity targ, entity inflictor, entity attacker, float damage) T_Damage;
 float (entity e, float healamount, float ignore) T_Heal; // health function
 
 float(entity targ, entity inflictor) CanDamage;
-
-

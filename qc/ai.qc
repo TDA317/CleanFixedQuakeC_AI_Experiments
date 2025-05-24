@@ -16,6 +16,9 @@
 
     See file, 'COPYING', for details.
 */
+// TDA-Jules: AI Enhancements
+float STRAFE_SPEED = 200; // Speed for strafing
+
 void() movetarget_f;
 void() t_movetarget;
 void() knight_walk1;
@@ -226,6 +229,14 @@ float(entity targ) infront =
 	return FALSE;
 };
 
+// TDA-Jules: Think function for completing a strafe maneuver
+void() ai_strafe_think =
+{
+    self.is_strafing = FALSE;     // TDA-Jules: Mark strafing as done
+    // TDA-Jules: Velocity will be reset/managed by the next call to ai_run via self.th_run
+    self.think = self.th_run;     // TDA-Jules: Go back to the monster's main run function
+    self.nextthink = time + 0.1;  // TDA-Jules: Short delay before resuming normal run logic
+};
 
 //============================================================================
 
@@ -657,6 +668,40 @@ void(float dist) ai_run =
 	enemy_infront = infront(self.enemy);
 	enemy_range = range(self.enemy);
 	enemy_yaw = vectoyaw(self.enemy.origin - self.origin);
+
+    // TDA-Jules: Strafe Logic Block START
+    if (self.classname == "monster_army" || self.classname == "monster_enforcer")
+    {
+        // TDA-Jules: Clear previous strafe velocity if applicable
+        // This handles the transition from ai_strafe_think back to ai_run.
+        if (!self.is_strafing && (self.velocity_x != 0 || self.velocity_y != 0) )
+        {
+             self.velocity_x = 0;
+             self.velocity_y = 0;
+             // TDA-Jules: Do not clear z velocity here, gravity should handle it
+        }
+
+        // TDA-Jules: Attempt strafe
+        // enemy_vis, enemy_infront, enemy_range, enemy_yaw should be up-to-date here.
+        if (self.enemy && self.enemy != world && enemy_vis && enemy_infront && enemy_range == RANGE_NEAR && time >= self.strafe_finished_time && random() < 0.15)
+        {
+            // TDA-Jules: Start strafe
+            self.is_strafing = TRUE; // Mark as strafing
+            self.strafe_finished_time = time + 1.5; // Cooldown: 0.3s strafe + 1.2s wait
+
+            makevectors(self.angles); // To get v_right based on current facing
+            local vector strafe_dir = v_right;
+            if (random() < 0.5) { strafe_dir = strafe_dir * -1; } // Randomly choose left or right
+
+            self.velocity = strafe_dir * STRAFE_SPEED; // Apply strafe velocity
+
+            self.think = ai_strafe_think; // Set think for end of strafe
+            self.nextthink = time + 0.3;  // Strafe for 0.3 seconds
+
+            return; // TDA-Jules: Skip normal movement/attack for this frame, commit to strafe
+        }
+    }
+    // TDA-Jules: Strafe Logic Block END
 
 	if (self.attack_state == AS_MISSILE)
 	{
