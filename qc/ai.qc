@@ -291,6 +291,15 @@ void() SightSound =
 
 void() FoundTarget =
 {
+    // TDA-Jules: If a dog visually finds a target, cancel any sound investigation or visual tracking.
+    if (self.classname == "monster_dog")
+    {
+        self.is_investigating_sound = 0; 
+        self.track_time = 0;             // TDA-Jules: Stop visual tracking if target is re-acquired
+        self.was_visible = 1;            // TDA-Jules: Target is now visually confirmed
+    }
+    // TDA-Jules: End of dog-specific modification in FoundTarget
+
 	if (self.enemy.classname == "player")
 	{	// let other monsters see this monster for a while
 		sight_entity = self;

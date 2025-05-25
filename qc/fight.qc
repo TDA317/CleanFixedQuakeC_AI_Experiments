@@ -80,6 +80,27 @@ float() CheckAttack =
 
 	targ = self.enemy;
 
+    // TDA-Jules: Enhanced Frontal Awareness Logic for generic monsters (like Enforcer)
+	if (targ && targ.health > 0 && visible(targ)) // TDA-Jules: Ensure enemy is valid and visible first
+	{
+		makevectors(self.angles);
+		vector dir_to_enemy = normalize(targ.origin - self.origin);
+		float dot_product = v_forward * dir_to_enemy;
+		float dist_to_enemy = vlen(targ.origin - self.origin);
+
+		if (dot_product > 0.9 && dist_to_enemy < 150) // TDA-Jules: Player is close (150 units) and in ~25-degree frontal cone
+		{
+			if (self.th_missile) // TDA-Jules: Ensure monster has a missile attack
+			{
+                // TDA-Jules: Player is close and in front, force attack decision
+                // TDA-Jules: Use the SUB_AttackFinished from the generic CheckAttack's successful random chance block
+                SUB_AttackFinished (2*random()); 
+				return TRUE; // TDA-Jules: Bypass other checks and trigger attack in ai_run
+			}
+		}
+	}
+    // TDA-Jules: End of Enhanced Frontal Awareness Logic
+
 	// see if any entities are in the way of the shot
 	spot1 = self.origin + self.view_ofs;
 	spot2 = targ.origin + targ.view_ofs;
@@ -114,14 +135,14 @@ float() CheckAttack =
 	if (enemy_range == RANGE_FAR)
 		return FALSE;
 
-	if (enemy_range == RANGE_MELEE)
+	if (enemy_range == RANGE_MELEE) 
 	{
-		chance = 0.9;
-		self.attack_finished = 0;
+		chance = 0.9; 
+		// self.attack_finished = 0; // TDA-Jules: Commenting out, SUB_AttackFinished should handle this.
 	}
 	else if (enemy_range == RANGE_NEAR)
 	{
-		if (self.th_melee)
+		if (self.th_melee) 
 			chance = 0.2;
 		else
 			chance = 0.4;
@@ -133,12 +154,11 @@ float() CheckAttack =
 		else
 			chance = 0.1;
 	}
-	else
+	else 
 		chance = 0;
 
 	if (random () < chance)
 	{
-		self.th_missile ();
 		SUB_AttackFinished (2*random());
 		return TRUE;
 	}
@@ -260,6 +280,25 @@ float() SoldierCheckAttack =
 
 	targ = self.enemy;
 
+    // TDA-Jules: Enhanced Frontal Awareness Logic for Grunts
+	if (targ && targ.health > 0 && visible(targ)) // TDA-Jules: Ensure enemy is valid and visible first
+	{
+		makevectors(self.angles);
+		vector dir_to_enemy = normalize(targ.origin - self.origin);
+		float dot_product = v_forward * dir_to_enemy;
+		float dist_to_enemy = vlen(targ.origin - self.origin);
+
+		if (dot_product > 0.9 && dist_to_enemy < 150) // TDA-Jules: Player is close (150 units) and in ~25-degree frontal cone
+		{
+			// TDA-Jules: Player is close and in front, force immediate attack decision
+			SUB_AttackFinished (1 + random()); // TDA-Jules: Set attack cooldown as it normally would for soldier
+			if (random() < 0.3)
+				self.lefty = !self.lefty; // TDA-Jules: Keep existing lefty logic
+			return TRUE; // TDA-Jules: Bypass other checks and trigger attack in ai_run
+		}
+	}
+    // TDA-Jules: End of Enhanced Frontal Awareness Logic for Grunts
+
 	// see if any entities are in the way of the shot
 	spot1 = self.origin + self.view_ofs;
 	spot2 = targ.origin + targ.view_ofs;
@@ -291,7 +330,6 @@ float() SoldierCheckAttack =
 
 	if (random () < chance)
 	{
-		self.th_missile ();
 		SUB_AttackFinished (1 + random());
 		if (random() < 0.3)
 			self.lefty = !self.lefty;
@@ -373,7 +411,7 @@ float() OgreCheckAttack =
 {
 	local vector spot1, spot2;
 	local entity targ;
-	local float chance;
+	// local float chance; // TDA-Jules: chance was not used in original Ogre missile logic here.
 
 	if (enemy_range == RANGE_MELEE)
 	{
@@ -409,19 +447,11 @@ float() OgreCheckAttack =
 	}
 
 	// missile attack
-	if (time < self.attack_finished)
-		return FALSE;
+	if (enemy_range == RANGE_FAR) 
+	    return FALSE;
 
-	if (enemy_range == RANGE_FAR)
-		return FALSE;
-
-	else if (enemy_range == RANGE_NEAR)
-		chance = 0.10;
-	else if (enemy_range == RANGE_MID)
-		chance = 0.05;
-	else
-		chance = 0;
-
+	// TDA-Jules: Original Ogre logic for missile attacks (if not melee and not far) was to always attack.
+	// TDA-Jules: No specific "chance" variable was used for this decision point in original code.
 	self.attack_state = AS_MISSILE;
 	SUB_AttackFinished (1 + 2*random());
 	return TRUE;

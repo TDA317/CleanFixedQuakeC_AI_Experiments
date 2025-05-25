@@ -51,6 +51,9 @@ $frame walk1 walk2 walk3 walk4 walk5 walk6 walk7 walk8
 
 void() dog_leap1;
 void() dog_run1;
+void() dog_stand1; 
+void() dog_walk1;  
+void() dog_bark_stand; 
 
 /*
 ================
@@ -100,12 +103,11 @@ void()	Dog_JumpTouch =
 	{
 		if (self.flags & FL_ONGROUND)
 		{
-			// jump randomly to not get hung up
 			self.touch = SUB_Null;
 			self.think = dog_leap1;
 			self.nextthink = time + 0.1;
 		}
-		return;	// not on ground yet
+		return;	
 	}
 
 	self.touch = SUB_Null;
@@ -113,8 +115,75 @@ void()	Dog_JumpTouch =
 	self.nextthink = time + 0.1;
 };
 
+void() dog_bark_stand = [ $stand1, dog_bark_stand ] 
+{
+    if (self.enemy != world)
+        ai_face(); 
+    
+    ai_stand();
 
-void() dog_stand1	=[	$stand1,	dog_stand2	] {ai_stand();};
+    if (time > self.bark_time)
+    {
+        dog_run1(); 
+        return;
+    }
+    self.nextthink = time + 0.1; 
+};
+
+
+void() dog_stand1	=[	$stand1,	dog_stand2	] 
+{
+    if (self.enemy == world && self.is_investigating_sound == 0 && self.track_time < time) 
+    {
+        if (FindTarget ()) 
+            return;
+        
+        if (self.target != world && (self.target.flags & FL_CLIENT) && !visible(self.target) && time > (self.investigate_sound_time + 5) ) 
+        {
+            self.sound_target_pos = self.target.origin; 
+            self.investigate_sound_time = time + 7; 
+            self.is_investigating_sound = 1;
+            if (random() < 0.5) sound(self, CHAN_VOICE, "dog/dsight.wav", 1, ATTN_IDLE); 
+            dog_run1(); 
+            return;
+        }
+    } else if (self.enemy != world && self.is_investigating_sound == 0 && self.track_time < time && self.is_retreating == 0 && time >= self.last_bark_alert_time && !DogCheckAttack() && visible(self.enemy) && random() < 0.3) { 
+        self.last_bark_alert_time = time + 10 + random()*5; 
+        self.bark_time = time + 2 + random(); 
+        sound(self, CHAN_VOICE, "dog/dsight.wav", 1, ATTN_NORM); 
+        self.think = dog_bark_stand; 
+        self.nextthink = time + 0.1;
+        
+        entity head = findradius(self.origin, 768);
+        while (head)
+        {
+            if ( (head.flags & FL_MONSTER) && head.health > 0 && head != self )
+            {
+                if (head.enemy == world || head.enemy == self || (head.enemy != self.enemy && !(head.enemy.flags & FL_CLIENT) ) )
+                {
+                    head.enemy = self.enemy; 
+                    if (head.th_run && !(head.flags & FL_FLY) && head.enemy && head.enemy.classname == "player")
+                    {
+                        head.show_hostile = time + 1; 
+                        if (head.classname == "monster_dog") { sound (head, CHAN_VOICE, "dog/dsight.wav", 1, ATTN_NORM); }
+                        else if (head.classname == "monster_ogre") { sound (head, CHAN_VOICE, "ogre/ogwake.wav", 1, ATTN_NORM); }
+                        else if (head.classname == "monster_knight") { sound (head, CHAN_VOICE, "knight/ksight.wav", 1, ATTN_NORM); }
+                        else if (head.classname == "monster_enforcer") { sound (head, CHAN_VOICE, "enforcer/sight1.wav", 1, ATTN_NORM); }
+                        else if (head.classname == "monster_army") { sound (head, CHAN_VOICE, "soldier/sight1.wav", 1, ATTN_NORM); }
+                        
+                        head.goalentity = head.enemy;
+                        head.think = head.th_run;
+                        head.ideal_yaw = vectoyaw(head.enemy.origin - head.origin);
+                        head.nextthink = time + 0.1 + (random() * 0.2);
+                    }
+                }
+            }
+            head = findnext(self, head);
+        }
+        return; 
+    }
+    ai_stand(); 
+};
 void() dog_stand2	=[	$stand2,	dog_stand3	] {ai_stand();};
 void() dog_stand3	=[	$stand3,	dog_stand4	] {ai_stand();};
 void() dog_stand4	=[	$stand4,	dog_stand5	] {ai_stand();};
@@ -126,9 +195,23 @@ void() dog_stand9	=[	$stand9,	dog_stand1	] {ai_stand();};
 
 void() dog_walk1	=[	$walk1 ,	dog_walk2	]
 {
+    if (self.enemy == world && self.is_investigating_sound == 0 && self.track_time < time) 
+    {
+        if (FindTarget ())
+            return;
+        if (self.target != world && (self.target.flags & FL_CLIENT) && !visible(self.target) && time > (self.investigate_sound_time + 5) )
+        {
+            self.sound_target_pos = self.target.origin;
+            self.investigate_sound_time = time + 7; 
+            self.is_investigating_sound = 1;
+            if (random() < 0.5) sound(self, CHAN_VOICE, "dog/dsight.wav", 1, ATTN_IDLE);
+            dog_run1(); 
+            return;
+        }
+    }
 	if (random() < 0.2)
 		sound (self, CHAN_VOICE, "dog/idle.wav", 1, ATTN_IDLE);
-	ai_walk(8);
+	ai_walk(8); 
 };
 void() dog_walk2	=[	$walk2 ,	dog_walk3	] {ai_walk(8);};
 void() dog_walk3	=[	$walk3 ,	dog_walk4	] {ai_walk(8);};
@@ -138,23 +221,142 @@ void() dog_walk6	=[	$walk6 ,	dog_walk7	] {ai_walk(8);};
 void() dog_walk7	=[	$walk7 ,	dog_walk8	] {ai_walk(8);};
 void() dog_walk8	=[	$walk8 ,	dog_walk1	] {ai_walk(8);};
 
+void() DogRunSharedLogic(float move_speed) 
+{
+    // TDA-Jules: Sound Investigation Logic
+    if (self.is_investigating_sound == 1)
+    {
+        if (FindTarget()) { return; } // FoundTarget resets is_investigating_sound via ai.qc
+        if (time > self.investigate_sound_time) 
+        {
+            self.is_investigating_sound = 0;
+            dog_stand1(); 
+            return;
+        }
+        if (vlen(self.origin - self.sound_target_pos) < 64) 
+        {
+            self.is_investigating_sound = 0;
+            self.pausetime = time + 2; 
+            dog_stand1(); 
+            return;
+        }
+        self.ideal_yaw = vectoyaw(self.sound_target_pos - self.origin);
+        ai_turn(); 
+        ai_run(move_speed); 
+        return; 
+    }
+
+    // TDA-Jules: Short-Term Visual Tracking Logic
+    if (self.enemy != world && self.bark_time < time && self.is_retreating == 0) // Ensure has enemy, not barking, not retreating
+    {
+        local float is_currently_visible = visible(self.enemy);
+        if (is_currently_visible)
+        {
+            self.last_known_player_pos = self.enemy.origin; // Continuously update LKP when visible
+            self.was_visible = 1;
+            if(self.track_time != 0) self.track_time = 0; // Reset track_time if enemy is re-acquired visually
+        }
+        else if (self.was_visible == 1) // LoS just lost (was_visible is true, but now not visible)
+        {
+            // self.last_known_player_pos was set in the last frame enemy was visible
+            self.track_time = time + 3 + 2*random(); // Track for 3-5 seconds
+            self.was_visible = 0; // Reset was_visible as we are now tracking based on LoS loss
+            // Optional: sound(self, CHAN_VOICE, "dog/idle.wav", 1, ATTN_IDLE); // Whimper/search sound
+        }
+
+        if (self.track_time > time) // Actively tracking non-visible enemy
+        {
+            if (FindTarget()) // Check if player becomes visible again
+            { 
+                self.track_time = 0; 
+                self.was_visible = 1; 
+                // FoundTarget calls HuntTarget, which calls th_run, so normal run will continue.
+                return; // Let the new FoundTarget logic take over.
+            }
+            else if (vlen(self.origin - self.last_known_player_pos) < 64) // Reached last known spot
+            {
+                self.track_time = 0; 
+                self.enemy = world; // Give up on current enemy until re-sighted
+                self.pausetime = time + 1.5 + random(); 
+                dog_stand1(); 
+                return;
+            }
+            else // Continue moving to LKP
+            {
+                self.ideal_yaw = vectoyaw(self.last_known_player_pos - self.origin);
+                ai_turn();
+                ai_run(move_speed); 
+                return; 
+            }
+        }
+        else if (self.track_time != 0 && time >= self.track_time) // Tracking time expired
+        {
+            self.track_time = 0;
+            self.enemy = world; 
+            dog_stand1(); 
+            return;
+        }
+    }
+    
+    // TDA-Jules: Bark/Alert Logic (if not investigating sound or tracking LKP)
+    if (self.enemy != world && self.is_retreating == 0 && self.bark_time < time && time >= self.last_bark_alert_time && !DogCheckAttack() && visible(self.enemy) && random() < 0.4)
+    {
+        self.last_bark_alert_time = time + 10 + random()*5; 
+        self.bark_time = time + 2 + random(); 
+        sound(self, CHAN_VOICE, "dog/dsight.wav", 1, ATTN_NORM); 
+        self.think = dog_bark_stand; 
+        self.nextthink = time + 0.1;
+        
+        entity head = findradius(self.origin, 768);
+        while (head)
+        {
+            if ( (head.flags & FL_MONSTER) && head.health > 0 && head != self )
+            {
+                if (head.enemy == world || head.enemy == self || (head.enemy != self.enemy && !(head.enemy.flags & FL_CLIENT) ) )
+                {
+                    head.enemy = self.enemy; 
+                    if (head.th_run && !(head.flags & FL_FLY) && head.enemy && head.enemy.classname == "player")
+                    {
+                        head.show_hostile = time + 1; 
+                        if (head.classname == "monster_dog") { sound (head, CHAN_VOICE, "dog/dsight.wav", 1, ATTN_NORM); }
+                        else if (head.classname == "monster_ogre") { sound (head, CHAN_VOICE, "ogre/ogwake.wav", 1, ATTN_NORM); }
+                        else if (head.classname == "monster_knight") { sound (head, CHAN_VOICE, "knight/ksight.wav", 1, ATTN_NORM); }
+                        else if (head.classname == "monster_enforcer") { sound (head, CHAN_VOICE, "enforcer/sight1.wav", 1, ATTN_NORM); }
+                        else if (head.classname == "monster_army") { sound (head, CHAN_VOICE, "soldier/sight1.wav", 1, ATTN_NORM); }
+                        
+                        head.goalentity = head.enemy;
+                        head.think = head.th_run;
+                        head.ideal_yaw = vectoyaw(head.enemy.origin - head.origin);
+                        head.nextthink = time + 0.1 + (random() * 0.2);
+                    }
+                }
+            }
+            head = findnext(self, head);
+        }
+        return; 
+    }
+    // TDA-Jules: If not investigating, not tracking LKP, and not barking, proceed with normal ai_run
+    ai_run(move_speed);
+}
+
+
 void() dog_run1		=[	$run1  ,	dog_run2	]
 {
-	if (random() < 0.2)
+	if (random() < 0.2 && self.is_investigating_sound == 0 && self.bark_time < time && self.track_time < time) 
 		sound (self, CHAN_VOICE, "dog/idle.wav", 1, ATTN_IDLE);
-	ai_run(16);
+    DogRunSharedLogic(16);
 };
-void() dog_run2		=[	$run2  ,	dog_run3	] {ai_run(32);};
-void() dog_run3		=[	$run3  ,	dog_run4	] {ai_run(32);};
-void() dog_run4		=[	$run4  ,	dog_run5	] {ai_run(20);};
-void() dog_run5		=[	$run5  ,	dog_run6	] {ai_run(64);};
-void() dog_run6		=[	$run6  ,	dog_run7	] {ai_run(32);};
-void() dog_run7		=[	$run7  ,	dog_run8	] {ai_run(16);};
-void() dog_run8		=[	$run8  ,	dog_run9	] {ai_run(32);};
-void() dog_run9		=[	$run9  ,	dog_run10	] {ai_run(32);};
-void() dog_run10	=[	$run10  ,	dog_run11	] {ai_run(20);};
-void() dog_run11	=[	$run11  ,	dog_run12	] {ai_run(64);};
-void() dog_run12	=[	$run12  ,	dog_run1	] {ai_run(32);};
+void() dog_run2		=[	$run2  ,	dog_run3	] { DogRunSharedLogic(32); };
+void() dog_run3		=[	$run3  ,	dog_run4	] { DogRunSharedLogic(32); };
+void() dog_run4		=[	$run4  ,	dog_run5	] { DogRunSharedLogic(20); };
+void() dog_run5		=[	$run5  ,	dog_run6	] { DogRunSharedLogic(64); };
+void() dog_run6		=[	$run6  ,	dog_run7	] { DogRunSharedLogic(32); };
+void() dog_run7		=[	$run7  ,	dog_run8	] { DogRunSharedLogic(16); };
+void() dog_run8		=[	$run8  ,	dog_run9	] { DogRunSharedLogic(32); };
+void() dog_run9		=[	$run9  ,	dog_run10	] { DogRunSharedLogic(32); };
+void() dog_run10	=[	$run10 ,	dog_run11	] { DogRunSharedLogic(20); };
+void() dog_run11	=[	$run11 ,	dog_run12	] { DogRunSharedLogic(64); };
+void() dog_run12	=[	$run12 ,	dog_run1	] { DogRunSharedLogic(32); };
 
 void() dog_atta1	=[	$attack1,	dog_atta2	] {ai_charge(10);};
 void() dog_atta2	=[	$attack2,	dog_atta3	] {ai_charge(10);};
@@ -169,9 +371,14 @@ void() dog_atta6	=[	$attack6,	dog_atta7	] {ai_charge(10);};
 void() dog_atta7	=[	$attack7,	dog_atta8	] {ai_charge(10);};
 void() dog_atta8	=[	$attack8,	dog_run1	] {ai_charge(10);};
 
-void() dog_leap1	=[	$leap1,		dog_leap2	] {ai_face();};
+void() dog_leap1	=[	$leap1,		dog_leap2	] 
+{
+    if (self.is_investigating_sound == 1 || self.bark_time > time || self.track_time > time) { dog_run1(); return; } 
+    ai_face();
+};
 void() dog_leap2	=[	$leap2,		dog_leap3	]
 {
+    if (self.is_investigating_sound == 1 || self.bark_time > time || self.track_time > time) { dog_run1(); return; } 
 	ai_face();
 
 	self.touch = Dog_JumpTouch;
@@ -216,6 +423,11 @@ void() dog_painb16	=[	$painb16 ,	dog_run1	] {};
 
 void(entity attacker, float damage) dog_pain =
 {
+    self.is_investigating_sound = 0;
+    self.bark_time = 0; 
+    self.track_time = 0; // TDA-Jules: Stop visual tracking if pained
+    self.was_visible = 0; // TDA-Jules: Reset LoS memory
+
 	sound (self, CHAN_VOICE, "dog/dpain1.wav", 1, ATTN_NORM);
 
 	if (random() > 0.5)
@@ -247,7 +459,6 @@ void() dog_dieb9		=[	$deathb9,	dog_dieb9	] {};
 
 void() dog_die =
 {
-	// check for gib
 	if (self.health < -35)
 	{
 		sound (self, CHAN_VOICE, "player/udeath.wav", 1, ATTN_NORM);
@@ -258,7 +469,6 @@ void() dog_die =
 		return;
 	}
 
-	// regular death
 	sound (self, CHAN_VOICE, "dog/ddeath.wav", 1, ATTN_NORM);
 	self.solid = SOLID_NOT;
 
@@ -270,33 +480,26 @@ void() dog_die =
 
 //============================================================================
 
-/*
-==============
-CheckDogMelee
-
-Returns TRUE if a melee attack would hit right now
-==============
-*/
 float()	CheckDogMelee =
 {
+    if (self.is_investigating_sound == 1 || self.bark_time > time || self.track_time > time)
+        return FALSE;
+
 	if (enemy_range == RANGE_MELEE)
-	{	// FIXME: check canreach
+	{	
 		self.attack_state = AS_MELEE;
 		return TRUE;
 	}
 	return FALSE;
 };
 
-/*
-==============
-CheckDogJump
-
-==============
-*/
 float()	CheckDogJump =
 {
 	local vector dist;
 	local float	d;
+
+    if (self.is_investigating_sound == 1 || self.bark_time > time || self.track_time > time)
+        return FALSE;
 
 	if (self.origin_z + self.mins_z > self.enemy.origin_z + self.enemy.mins_z + 0.75 * self.enemy.size_z)
 		return FALSE;
@@ -312,7 +515,7 @@ float()	CheckDogJump =
 	if (d < 80)
 		return FALSE;
 
-	if (d > 150)
+	if (d > 150) 
 		return FALSE;
 
 	return TRUE;
@@ -320,16 +523,17 @@ float()	CheckDogJump =
 
 float()	DogCheckAttack =
 {
-	// if close enough for slashing, go for it
+    if (self.is_investigating_sound == 1 || self.bark_time > time || self.track_time > time) 
+        return FALSE;
+
 	if (CheckDogMelee ())
 	{
-		self.attack_state = AS_MELEE;
 		return TRUE;
 	}
 
 	if (CheckDogJump ())
 	{
-		self.attack_state = AS_MISSILE;
+		self.attack_state = AS_MISSILE; 
 		return TRUE;
 	}
 
@@ -354,8 +558,14 @@ void() monster_dog =
 	precache_sound ("dog/dattack1.wav");
 	precache_sound ("dog/ddeath.wav");
 	precache_sound ("dog/dpain1.wav");
-	precache_sound ("dog/dsight.wav");
+	precache_sound ("dog/dsight.wav"); 
 	precache_sound ("dog/idle.wav");
+
+    precache_sound ("ogre/ogwake.wav");
+    precache_sound ("knight/ksight.wav");
+    precache_sound ("enforcer/sight1.wav");
+    precache_sound ("soldier/sight1.wav");
+
 
 	self.solid = SOLID_SLIDEBOX;
 	self.movetype = MOVETYPE_STEP;
@@ -364,6 +574,20 @@ void() monster_dog =
 
 	setsize (self, '-32 -32 -24', '32 32 40');
 	self.health = 25;
+    self.max_health = self.health; 
+
+    self.sound_target_pos = '0 0 0';
+    self.investigate_sound_time = 0;
+    self.is_investigating_sound = 0;
+
+    self.bark_time = 0;
+    self.last_bark_alert_time = 0;
+
+    // TDA-Jules: Initialize visual tracking fields
+    self.last_known_player_pos = '0 0 0';
+    self.track_time = 0;
+    self.was_visible = 0; // TDA-Jules: Flag to detect when LoS is first lost
+
 
 	self.th_stand = dog_stand1;
 	self.th_walk = dog_walk1;

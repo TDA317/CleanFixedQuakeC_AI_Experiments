@@ -1,3 +1,18 @@
+v1.7: Enhanced AI for Grunts, Enforcers, and Dogs.
+Unreleased (July 26, 2024)
+
+AI enhancements by TDA-Jules.
+
+Grunts and Enforcers:
+* Implemented reactive strafing: Monsters may dodge sideways when actively engaged. Strafing is lateral, occurs with a chance during run/attack states, and has a cooldown. Conditions include player visibility, range, and monster facing the player.
+* Implemented conditional retreat: Monsters with health below 30% will attempt to turn and flee from the player for a short duration (3 seconds). This behavior has a cooldown and is interrupted by taking further damage.
+* Enhanced frontal presence awareness: Monsters react more quickly and aggressively by transitioning to an attack state if the player is detected very close (within 150 units) and directly in front (approx. 25-degree cone). This is integrated into `CheckAttack` and `SoldierCheckAttack`.
+
+Dogs:
+* Enhanced hearing and sound investigation: Dogs will now move towards and investigate suspected player sounds (based on `self.target` being a non-visible player) for a short duration (7 seconds). Visual acquisition of a target or taking damage cancels investigation.
+* Implemented non-combat bark/growl with alert: Dogs may bark/growl for 2-3 seconds when aware of a player but not in immediate attack condition. This bark alerts other nearby monsters (within 768 units) to the player's presence, making them target the player and transition to their run states. This behavior has a 10-15 second cooldown.
+* Implemented short-term visual tracking: If a dog loses line of sight while pursuing a player, it will remember the player's last known position and continue towards it for 3-5 seconds, attempting to re-acquire the target. If the target is not found, the dog returns to an idle state.
+
 Change Log
 ==========
 

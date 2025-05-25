@@ -166,33 +166,171 @@ void()	enf_walk16	=[	$walk16,	enf_walk1	] {ai_walk(2);};
 
 void()	enf_run1	=[	$run1  ,	enf_run2	]
 {
-	if (random() < 0.2)
-		sound (self, CHAN_VOICE, "enforcer/idle1.wav", 1, ATTN_IDLE);
-	ai_run(18);
-};
-void()	enf_run2	=[	$run2  ,	enf_run3	] {ai_run(14);};
-void()	enf_run3	=[	$run3  ,	enf_run4	] {ai_run(7);};
-void()	enf_run4	=[	$run4  ,	enf_run5	] {ai_run(12);};
-void()	enf_run5	=[	$run5  ,	enf_run6	] {ai_run(14);};
-void()	enf_run6	=[	$run6  ,	enf_run7	] {ai_run(14);};
-void()	enf_run7	=[	$run7  ,	enf_run8	] {ai_run(7);};
-void()	enf_run8	=[	$run8  ,	enf_run1	] {ai_run(11);};
+    // TDA-Jules: Retreat logic
+	if (self.is_retreating == 1)
+	{
+		if (time >= self.retreat_finished)
+		{
+			self.is_retreating = 0; // TDA-Jules: Retreat time finished
+			// TDA-Jules: Proceed to normal run logic below
+		}
+		else
+		{
+			// TDA-Jules: Continue retreating
+			// TDA-Jules: self.ideal_yaw was set in enf_pain to face away. ai_turn will handle turning.
+			ai_turn(); // TDA-Jules: Ensure monster turns towards ideal_yaw (away from enemy)
+			ai_run(18); // TDA-Jules: Run speed while retreating (using original enf_run1 speed)
+			return; // TDA-Jules: Skip strafing/normal engagement
+		}
+	}
 
-void()	enf_atk1	=[	$attack1,	enf_atk2	] {ai_face();};
+	// TDA-Jules: Check for strafe conditions (only if not retreating)
+	if (self.enemy != world && self.strafe_finished < time && random() < 0.3 && visible(self.enemy) && vlen(self.origin - self.enemy.origin) < 512)
+	{
+		ai_face(); 
+		if (fabs(self.ideal_yaw - self.angles_y) < 20)
+		{
+			makevectors(self.angles); 
+			if (random() < 0.5)
+			{
+				self.velocity_x = v_right_x * -150; 
+				self.velocity_y = v_right_y * -150;
+			}
+			else
+			{
+				self.velocity_x = v_right_x * 150;
+				self.velocity_y = v_right_y * 150;
+			}
+			self.strafe_finished = time + 1; 
+			ai_run(0); 
+		}
+		else
+		{
+			if (random() < 0.2)
+				sound (self, CHAN_VOICE, "enforcer/idle1.wav", 1, ATTN_IDLE);
+			ai_run(18);
+		}
+	}
+	else
+	{
+		if (random() < 0.2)
+			sound (self, CHAN_VOICE, "enforcer/idle1.wav", 1, ATTN_IDLE);
+		ai_run(18); // TDA-Jules: This will also call ai_face() if enemy is visible via CheckAttack
+	}
+};
+// TDA-Jules: Simplified retreat checks in subsequent run frames. enf_run1 handles the core logic.
+void()	enf_run2	=[	$run2  ,	enf_run3	] { if(self.is_retreating == 1 && time < self.retreat_finished) { ai_turn(); ai_run(14); return; } ai_run(14);};
+void()	enf_run3	=[	$run3  ,	enf_run4	] { if(self.is_retreating == 1 && time < self.retreat_finished) { ai_turn(); ai_run(7); return; } ai_run(7);};
+void()	enf_run4	=[	$run4  ,	enf_run5	] { if(self.is_retreating == 1 && time < self.retreat_finished) { ai_turn(); ai_run(12); return; } ai_run(12);};
+void()	enf_run5	=[	$run5  ,	enf_run6	] { if(self.is_retreating == 1 && time < self.retreat_finished) { ai_turn(); ai_run(14); return; } ai_run(14);};
+void()	enf_run6	=[	$run6  ,	enf_run7	] { if(self.is_retreating == 1 && time < self.retreat_finished) { ai_turn(); ai_run(14); return; } ai_run(14);};
+void()	enf_run7	=[	$run7  ,	enf_run8	] { if(self.is_retreating == 1 && time < self.retreat_finished) { ai_turn(); ai_run(7); return; } ai_run(7);};
+void()	enf_run8	=[	$run8  ,	enf_run1	] { if(self.is_retreating == 1 && time < self.retreat_finished) { ai_turn(); ai_run(11); return; } ai_run(11);};
+
+void()	enf_atk1	=[	$attack1,	enf_atk2	] 
+{
+    // TDA-Jules: Prevent attack if retreating
+	if (self.is_retreating == 1 && time < self.retreat_finished)
+	{
+		enf_run1(); // TDA-Jules: Go back to run state if retreating
+		return;
+	}
+	ai_face();
+};
 void()	enf_atk2	=[	$attack2,	enf_atk3	] {ai_face();};
 void()	enf_atk3	=[	$attack3,	enf_atk4	] {ai_face();};
 void()	enf_atk4	=[	$attack4,	enf_atk5	] {ai_face();};
-void()	enf_atk5	=[	$attack5,	enf_atk6	] {ai_face();};
-void()	enf_atk6	=[	$attack6,	enf_atk7	] {enforcer_fire();};
+void()	enf_atk5	=[	$attack5,	enf_atk6	] 
+{
+    // TDA-Jules: Prevent attack if retreating
+	if (self.is_retreating == 1 && time < self.retreat_finished)
+	{
+		enf_run1();
+		return;
+	}
+	ai_face();
+};
+void()	enf_atk6	=[	$attack6,	enf_atk7	] 
+{
+    // TDA-Jules: Prevent attack if retreating
+	if (self.is_retreating == 1 && time < self.retreat_finished)
+	{
+		enf_run1();
+		return;
+	}
+	// TDA-Jules: Strafe logic during attack.
+	if (self.enemy != world && self.strafe_finished < time && random() < 0.5 && visible(self.enemy) && vlen(self.origin - self.enemy.origin) < 512)
+	{
+		if (fabs(self.ideal_yaw - self.angles_y) < 20) 
+		{
+			makevectors(self.angles); 
+			if (random() < 0.5)
+			{
+				self.velocity_x = v_right_x * -100; 
+				self.velocity_y = v_right_y * -100;
+			}
+			else
+			{
+				self.velocity_x = v_right_x * 100;
+				self.velocity_y = v_right_y * 100;
+			}
+			self.strafe_finished = time + 0.8; 
+		}
+	}
+	enforcer_fire();
+};
 void()	enf_atk7	=[	$attack7,	enf_atk8	] {ai_face();};
 void()	enf_atk8	=[	$attack8,	enf_atk9	] {ai_face();};
-void()	enf_atk9	=[	$attack5,	enf_atk10	] {ai_face();};
-void()	enf_atk10	=[	$attack6,	enf_atk11	] {enforcer_fire();};
+void()	enf_atk9	=[	$attack5,	enf_atk10	] 
+{
+    // TDA-Jules: Prevent attack if retreating
+	if (self.is_retreating == 1 && time < self.retreat_finished)
+	{
+		enf_run1();
+		return;
+	}
+	ai_face();
+};
+void()	enf_atk10	=[	$attack6,	enf_atk11	] 
+{
+    // TDA-Jules: Prevent attack if retreating
+	if (self.is_retreating == 1 && time < self.retreat_finished)
+	{
+		enf_run1();
+		return;
+	}
+	// TDA-Jules: Strafe logic during attack (second fire frame).
+	if (self.enemy != world && self.strafe_finished < time && random() < 0.5 && visible(self.enemy) && vlen(self.origin - self.enemy.origin) < 512)
+	{
+		if (fabs(self.ideal_yaw - self.angles_y) < 20)
+		{
+			makevectors(self.angles);
+			if (random() < 0.5)
+			{
+				self.velocity_x = v_right_x * -100;
+				self.velocity_y = v_right_y * -100;
+			}
+			else
+			{
+				self.velocity_x = v_right_x * 100;
+				self.velocity_y = v_right_y * 100;
+			}
+			self.strafe_finished = time + 0.8; 
+		}
+	}
+	enforcer_fire();
+};
 void()	enf_atk11	=[	$attack7,	enf_atk12	] {ai_face();};
 void()	enf_atk12	=[	$attack8,	enf_atk13	] {ai_face();};
 void()	enf_atk13	=[	$attack9,	enf_atk14	] {ai_face();};
 void()	enf_atk14	=[	$attack10,	enf_run1	]
 {
+    // TDA-Jules: Prevent re-fire if retreating
+	if (self.is_retreating == 1 && time < self.retreat_finished)
+	{
+		enf_run1();
+		return;
+	}
 	ai_face();
 	SUB_CheckRefire (enf_atk1);
 };
@@ -232,8 +370,8 @@ void()	enf_paind12	=[	$paind12,	enf_paind13	] {ai_painforward(1);};
 void()	enf_paind13	=[	$paind13,	enf_paind14	] {ai_painforward(1);};
 void()	enf_paind14	=[	$paind14,	enf_paind15	] {};
 void()	enf_paind15	=[	$paind15,	enf_paind16	] {};
-void()	enf_paind16	=[	$paind16,	enf_paind17	] {ai_pain(1);};
-void()	enf_paind17	=[	$paind17,	enf_paind18	] {ai_pain(1);};
+void()	enf_paind16	=[	$paind16,	enf_paind17	] {/* TDA-Jules: Original was ai_pain(1) */};
+void()	enf_paind17	=[	$paind17,	enf_paind18	] {/* TDA-Jules: Original was ai_pain(1) */};
 void()	enf_paind18	=[	$paind18,	enf_paind19	] {};
 void()	enf_paind19	=[	$paind19,	enf_run1	] {};
 
@@ -241,11 +379,32 @@ void(entity attacker, float damage)	enf_pain =
 {
 	local float r;
 
-	r = random ();
-	if (self.pain_finished > time)
+    // TDA-Jules: If already decided to retreat from this pain instance and pain animation just started
+	if (self.is_retreating == 1 && self.retreat_finished > time && self.pain_finished < time)
+	{
+	    return; 
+	}
+
+	if (self.pain_finished > time) // TDA-Jules: Already in a pain animation
 		return;
 
+	// TDA-Jules: Retreat Condition Check
+	if (self.health < (self.max_health * 0.3) && self.is_retreating == 0 && self.retreat_finished < time && self.enemy != world)
+	{
+		self.is_retreating = 1; 
+		self.retreat_finished = time + 3; 
+		self.ideal_yaw = anglemod(self.angles_y + 180); 
+		
+		sound (self, CHAN_VOICE, "enforcer/sight1.wav", 1, ATTN_NORM); // TDA-Jules: Placeholder retreat sound
+		
+		self.pain_finished = time + 0.1; // TDA-Jules: Minimal pain animation time
+		
+		enf_run1(); // TDA-Jules: Start retreating
+		return; 
+	}
 
+	// TDA-Jules: Normal pain animation sequence if not retreating
+	r = random ();
 	if (r < 0.5)
 		sound (self, CHAN_VOICE, "enforcer/pain1.wav", 1, ATTN_NORM);
 	else
@@ -358,7 +517,7 @@ void() monster_enforcer =
 	precache_sound2 ("enforcer/idle1.wav");
 	precache_sound2 ("enforcer/pain1.wav");
 	precache_sound2 ("enforcer/pain2.wav");
-	precache_sound2 ("enforcer/sight1.wav");
+	precache_sound2 ("enforcer/sight1.wav"); // TDA-Jules: Used as placeholder retreat sound
 	precache_sound2 ("enforcer/sight2.wav");
 	precache_sound2 ("enforcer/sight3.wav");
 	precache_sound2 ("enforcer/sight4.wav");
@@ -370,6 +529,10 @@ void() monster_enforcer =
 
 	setsize (self, '-16 -16 -24', '16 16 40');
 	self.health = 80;
+	// TDA-Jules: Initialize variables for retreat logic
+	self.max_health = self.health; 
+	self.is_retreating = 0; 
+	self.retreat_finished = 0;
 
 	self.th_stand = enf_stand1;
 	self.th_walk = enf_walk1;
@@ -377,6 +540,9 @@ void() monster_enforcer =
 	self.th_pain = enf_pain;
 	self.th_die = enf_die;
 	self.th_missile = enf_atk1;
+
+	// TDA-Jules: Initialize strafe cooldown variable
+	self.strafe_finished = 0; 
 
 	walkmonster_start();
 };
