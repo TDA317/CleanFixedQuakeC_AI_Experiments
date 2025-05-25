@@ -467,9 +467,21 @@ float		skill;
 
 .float	search_time;
 .float	attack_state;
-// TDA-Jules: For strafing AI
-.float strafe_finished_time; // Cooldown for strafing
+// TDA-Jules: For strafing AI (Grunt/Enforcer)
+.float strafe_finished;      // TDA-Jules: Corrected from strafe_finished_time. Cooldown for strafing.
 .float is_strafing;          // Flag to indicate currently strafing
+
+// TDA-Jules: Additional AI fields for various monster enhancements
+.vector sound_target_pos;         // Dog: Position of a sound to investigate
+.float investigate_sound_time;   // Dog: Timestamp to stop investigating sound
+.float is_investigating_sound;   // Dog: Flag for sound investigation state
+.float bark_time;                // Dog: Timestamp to stop barking state
+.float last_bark_alert_time;     // Dog: Cooldown for alert bark
+.vector last_known_player_pos;    // Dog: Last known position of player for visual tracking
+.float track_time;               // Dog: Timestamp to stop visual tracking
+.float was_visible;              // Dog: Flag if player was visible in previous frame for visual tracking
+.float is_retreating;            // Grunt/Enforcer: Flag for retreat state
+.float retreat_finished;         // Grunt/Enforcer: Timestamp to stop retreating
 
 float	AS_STRAIGHT		= 1;
 float	AS_SLIDING		= 2;
@@ -481,7 +493,7 @@ float	AS_MISSILE		= 4;
 //
 .float		walkframe;
 
-.float 		attack_finished;
+.float 		attack_finished; // TDA-Jules: Note: Also used by monsters for attack cooldowns
 .float		pain_finished;
 
 .float		invincible_finished;
@@ -711,3 +723,5 @@ void(entity targ, entity inflictor, entity attacker, float damage) T_Damage;
 float (entity e, float healamount, float ignore) T_Heal; // health function
 
 float(entity targ, entity inflictor) CanDamage;
+
+[end of qc/defs.qc]
