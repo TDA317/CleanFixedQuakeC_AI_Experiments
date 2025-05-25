@@ -32,7 +32,7 @@ $frame attack1 attack2 attack3 attack4 attack5 attack6 attack7 attack8
 
 $frame death1 death2 death3 death4 death5 death6 death7 death8 death9
 
-$frame deathb1 deathb2 deathb3 deathb4 deathb5 deathb6 deathb7 deathb8
+$frame deathb1 deathb2 deathb3 deathb4 deathb5 deathb6 death7 deathb8
 $frame deathb9
 
 $frame pain1 pain2 pain3 pain4 pain5 pain6
@@ -147,7 +147,7 @@ void() dog_stand1	=[	$stand1,	dog_stand2	]
             dog_run1(); 
             return;
         }
-    } else if (self.enemy != world && self.is_investigating_sound == 0 && self.track_time < time && self.is_retreating == 0 && time >= self.last_bark_alert_time && !DogCheckAttack() && visible(self.enemy) && random() < 0.3) { 
+    } else if (self.enemy != world && self.is_investigating_sound == 0 && self.track_time < time && /* self.is_retreating == 0 && */ time >= self.last_bark_alert_time && !DogCheckAttack() && visible(self.enemy) && random() < 0.3) { // TDA-Jules: is_retreating not on dog, but good for pattern
         self.last_bark_alert_time = time + 10 + random()*5; 
         self.bark_time = time + 2 + random(); 
         sound(self, CHAN_VOICE, "dog/dsight.wav", 1, ATTN_NORM); 
@@ -178,7 +178,7 @@ void() dog_stand1	=[	$stand1,	dog_stand2	]
                     }
                 }
             }
-            head = findnext(self, head);
+            head = head.chain; // TDA-Jules: Corrected findradius iteration
         }
         return; 
     }
@@ -221,7 +221,8 @@ void() dog_walk6	=[	$walk6 ,	dog_walk7	] {ai_walk(8);};
 void() dog_walk7	=[	$walk7 ,	dog_walk8	] {ai_walk(8);};
 void() dog_walk8	=[	$walk8 ,	dog_walk1	] {ai_walk(8);};
 
-void() DogRunSharedLogic(float move_speed) 
+// TDA-Jules: Corrected function signature
+void DogRunSharedLogic(float move_speed) 
 {
     // TDA-Jules: Sound Investigation Logic
     if (self.is_investigating_sound == 1)
@@ -247,7 +248,7 @@ void() DogRunSharedLogic(float move_speed)
     }
 
     // TDA-Jules: Short-Term Visual Tracking Logic
-    if (self.enemy != world && self.bark_time < time && self.is_retreating == 0) // Ensure has enemy, not barking, not retreating
+    if (self.enemy != world && self.bark_time < time && /* self.is_retreating == 0 && */ TRUE) // Ensure has enemy, not barking, not retreating (dog has no retreat)
     {
         local float is_currently_visible = visible(self.enemy);
         if (is_currently_visible)
@@ -299,7 +300,7 @@ void() DogRunSharedLogic(float move_speed)
     }
     
     // TDA-Jules: Bark/Alert Logic (if not investigating sound or tracking LKP)
-    if (self.enemy != world && self.is_retreating == 0 && self.bark_time < time && time >= self.last_bark_alert_time && !DogCheckAttack() && visible(self.enemy) && random() < 0.4)
+    if (self.enemy != world && /* self.is_retreating == 0 && */ self.bark_time < time && time >= self.last_bark_alert_time && !DogCheckAttack() && visible(self.enemy) && random() < 0.4)
     {
         self.last_bark_alert_time = time + 10 + random()*5; 
         self.bark_time = time + 2 + random(); 
@@ -331,7 +332,7 @@ void() DogRunSharedLogic(float move_speed)
                     }
                 }
             }
-            head = findnext(self, head);
+            head = head.chain; // TDA-Jules: Corrected findradius iteration
         }
         return; 
     }
@@ -599,3 +600,5 @@ void() monster_dog =
 
 	walkmonster_start();
 };
+
+[end of qc/dog.qc]

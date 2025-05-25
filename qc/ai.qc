@@ -679,6 +679,10 @@ void(float dist) ai_run =
 	enemy_yaw = vectoyaw(self.enemy.origin - self.origin);
 
     // TDA-Jules: Strafe Logic Block START
+    // TDA-Jules: This strafe logic is distinct from the one in qc/soldier.qc and qc/enforcer.qc run functions.
+    // TDA-Jules: That logic directly sets velocity. This one uses ai_strafe_think.
+    // TDA-Jules: For consistency, the other strafe logic should be preferred or this block removed/harmonized.
+    // TDA-Jules: For now, correcting the field name as per task.
     if (self.classname == "monster_army" || self.classname == "monster_enforcer")
     {
         // TDA-Jules: Clear previous strafe velocity if applicable
@@ -692,11 +696,13 @@ void(float dist) ai_run =
 
         // TDA-Jules: Attempt strafe
         // enemy_vis, enemy_infront, enemy_range, enemy_yaw should be up-to-date here.
-        if (self.enemy && self.enemy != world && enemy_vis && enemy_infront && enemy_range == RANGE_NEAR && time >= self.strafe_finished_time && random() < 0.15)
+        // TDA-Jules: Corrected self.strafe_finished_time to self.strafe_finished
+        if (self.enemy && self.enemy != world && enemy_vis && enemy_infront && enemy_range == RANGE_NEAR && time >= self.strafe_finished && random() < 0.15)
         {
             // TDA-Jules: Start strafe
             self.is_strafing = TRUE; // Mark as strafing
-            self.strafe_finished_time = time + 1.5; // Cooldown: 0.3s strafe + 1.2s wait
+            // TDA-Jules: Corrected self.strafe_finished_time to self.strafe_finished
+            self.strafe_finished = time + 1.5; // Cooldown: 0.3s strafe + 1.2s wait
 
             makevectors(self.angles); // To get v_right based on current facing
             local vector strafe_dir = v_right;
