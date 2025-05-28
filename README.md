@@ -1,4 +1,4 @@
-# This is an experimental AI modified version of:
+# This is an experimental Google Jarvis AI modified version of:
 # Clean Fixed QuakeC
 Clean and bug-fixed version of the Quake game code (progs.dat) released under the GPL.
 
