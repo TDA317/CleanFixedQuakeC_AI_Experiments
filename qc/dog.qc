@@ -16,6 +16,24 @@
 
     See file, 'COPYING', for details.
 */
+/*  Copyright (C) 1996-1997  Id Software, Inc.
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+    See file, 'COPYING', for details.
+*/
 /*
 ==============================================================================
 
@@ -138,9 +156,11 @@ void() dog_stand1	=[	$stand1,	dog_stand2	]
         if (FindTarget ()) 
             return;
         
-        if (self.target != world && (self.target.flags & FL_CLIENT) && !visible(self.target) && time > (self.investigate_sound_time + 5) ) 
+  //      if (self.target != world && (self.target.flags & FL_CLIENT) && !visible(self.target) && time > (self.investigate_sound_time + 5) ) 
+  if (self.goalentity != world && (self.goalentity.flags & FL_CLIENT) && !visible(self.goalentity) && time > (self.investigate_sound_time + 5) ) // TDA_QWEN3-235B fix
         {
-            self.sound_target_pos = self.target.origin; 
+  //          self.sound_target_pos = self.target.origin; 
+	    self.sound_target_pos = self.goalentity.origin; // TDA_QWEN3-235B fix
             self.investigate_sound_time = time + 7; 
             self.is_investigating_sound = 1;
             if (random() < 0.5) sound(self, CHAN_VOICE, "dog/dsight.wav", 1, ATTN_IDLE); 
@@ -199,9 +219,11 @@ void() dog_walk1	=[	$walk1 ,	dog_walk2	]
     {
         if (FindTarget ())
             return;
-        if (self.target != world && (self.target.flags & FL_CLIENT) && !visible(self.target) && time > (self.investigate_sound_time + 5) )
+//        if (self.target != world && (self.target.flags & FL_CLIENT) && !visible(self.target) && time > (self.investigate_sound_time + 5) )
+         if (self.goalentity != world && (self.goalentity.flags & FL_CLIENT) && !visible(self.goalentity) && time > (self.investigate_sound_time + 5)) // TDA_QWEN3-235B fix
         {
-            self.sound_target_pos = self.target.origin;
+ //           self.sound_target_pos = self.target.origin;
+            self.sound_target_pos = self.goalentity.origin; // TDA_QWEN3-235B fix
             self.investigate_sound_time = time + 7; 
             self.is_investigating_sound = 1;
             if (random() < 0.5) sound(self, CHAN_VOICE, "dog/dsight.wav", 1, ATTN_IDLE);
@@ -600,5 +622,8 @@ void() monster_dog =
 
 	walkmonster_start();
 };
+
+
+
 
 [end of qc/dog.qc]
