@@ -601,3 +601,4 @@ void() monster_dog =
 	walkmonster_start();
 };
 
+[end of qc/dog.qc]
