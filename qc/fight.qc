@@ -159,6 +159,7 @@ float() CheckAttack =
 
 	if (random () < chance)
 	{
+	self.th_missile (); // TDA-Jules: manual edit. It removed I added back.
 		SUB_AttackFinished (2*random());
 		return TRUE;
 	}
@@ -330,7 +331,8 @@ float() SoldierCheckAttack =
 
 	if (random () < chance)
 	{
-		SUB_AttackFinished (1 + random());
+self.th_missile (); // TDA_Jules manual edit. It removed, I added back
+		SUB_AttackFinished (1 + random()); 
 		if (random() < 0.3)
 			self.lefty = !self.lefty;
 
